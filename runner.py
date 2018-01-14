@@ -157,7 +157,7 @@ if __name__ ==  '__main__':
 #     play_dominoes()
     f = h5py.File('data/' + DATA_FILE,'a')
     
-    ctr = 0
+#     ctr = 0
     import time
     t1 = time.time()
     for name in f.keys():
@@ -183,9 +183,9 @@ if __name__ ==  '__main__':
         data['win_probs']  = probs
         print('Win probs:', probs)
         
-        ctr += 1
-        if ctr == 10:
-            break
+#         ctr += 1
+#         if ctr == 10:
+#             break
     t2 = time.time()
     print('Total time', t2-t1)
 
