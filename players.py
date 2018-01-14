@@ -156,7 +156,7 @@ class RandomDominoPlayer(DominoPlayer):
             
             if not possible_moves[1] and not possible_moves[2]:
                 # Must pass
-                print('Must pass!')
+#                 print('Must pass!')
                 move = (self, (-1, [0,0]))
             else:
     #             print('possible moves', possible_moves)

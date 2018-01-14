@@ -24,7 +24,7 @@ from utils import make_afterstate_dict
 f = h5py.File('data/set1.hdf5','a')
 
 print(f.keys())
-d = f['game0']
+d = f['game100']
 # data = [data1]
 # ctr = 0
 # for game in f:
@@ -42,7 +42,7 @@ print(d['num_dominoes'][:])
 print(d['passes'][:])
 print(d['board_state'][:])
 
-# after_state_dict = make_afterstate_dict(d,)
-# simulate_after_state(after_state_dict, hand_size=7, num_sims=10000)
-# print(d['win_probs'][:])
+after_state_dict = make_afterstate_dict(d,)
+simulate_after_state(after_state_dict, hand_size=7, num_sims=10000)
+print(d['win_probs'][:])
 

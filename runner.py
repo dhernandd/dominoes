@@ -32,7 +32,7 @@ DOMINO = [[i, j] for i in range(1,TOPNUM+1) for j in range(i, TOPNUM+1)]
 NUM_PLAYERS = 4
 HAND_SIZE = 7
 
-DATA_FILE = 'set1.hd5f'
+DATA_FILE = 'set1.hdf5'
 
 STARTING_DOMINOES = [[[7, 7], [4, 6], [6, 7], [3, 3], [1, 2], [4, 5], [1, 5]],
  [[2, 6], [5, 5], [1, 4], [4, 4], [6, 6], [5, 6], [3, 7]],
@@ -109,7 +109,7 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
     
 
     for _ in range(num_sims):
-        print('New simulation!')
+#         print('New simulation!')
         
         asd_copy = deepcopy(after_state_dict)
         game.reset(asd_copy)
@@ -119,7 +119,7 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
         last_player = game.last_player
         assert last_player.num_player == last_player_id, "The last player is not what it should be"
         last_player.reset(np.array(player_hand_one_hot))
-        print('Player dominoes:', last_player.dominoes)
+#         print('Player dominoes:', last_player.dominoes)
         
         usable_dominoes_pp = get_usable_dominoes(list(DOMINO), asd_copy)
         other_player_ids = [i for i in range(1, num_players+1) if i != last_player.num_player]
@@ -138,8 +138,8 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
         winner = roll_game(game)
         list_victories[winner] += 1
         
-        print('Salida:', game.salida)
-        print('Game End!\n\n')
+#         print('Salida:', game.salida)
+#         print('Game End!\n\n')
             
     print('\n', list_victories, '\t', list_victories[1]+list_victories[3], 
               list_victories[2]+list_victories[4])
@@ -161,7 +161,7 @@ if __name__ ==  '__main__':
     import time
     t1 = time.time()
     for name in f.keys():
-        print('Game', name)
+        print('Game:', name)
         data = f[name]
         after_state_dict = {}
         
@@ -181,6 +181,7 @@ if __name__ ==  '__main__':
         
         if 'win_probs' in data.keys(): del data['win_probs']
         data['win_probs']  = probs
+        print('Win probs:', probs)
         
         ctr += 1
         if ctr == 10:

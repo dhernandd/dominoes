@@ -238,9 +238,9 @@ class Dominoes():
                              
             # Finally, if a player passes...
             if pos == -1:
-                print('Player', num_player, 'passes on move', self.num_moves+1, '!')
-                print('heads:', self.heads)
-                print('board:', self.game_board)
+#                 print('Player', num_player, 'passes on move', self.num_moves+1, '!')
+#                 print('heads:', self.heads)
+#                 print('board:', self.game_board)
                 self.num_passes += 1
                 self.board_state[self.num_moves] = np.array([num_player, pos, 0, 0])
                                 
@@ -251,7 +251,7 @@ class Dominoes():
 
                 for i in self.heads:
                     self.one_hot_passes[num_player-1][i-1] = 1 
-                print(self.one_hot_passes)
+#                 print(self.one_hot_passes)
             # Modify the state of ever-watching players after a move
             for observing_player in self.players:
                 if observing_player.is_watching and observing_player.num_player != num_player:
@@ -276,34 +276,34 @@ class Dominoes():
         """
         if player is not None:
             self.winner = player.num_player
-            print('Se pego player', self.winner, '!')
-            print('Winner: Player', self.winner)
+#             print('Se pego player', self.winner, '!')
+#             print('Winner: Player', self.winner)
         else:
-            print('Se tranco!')
+#             print('Se tranco!')
             players_score = []
             scores = []
             for player in self.players:
                 s = sum([sum(d) for d in player.dominoes])
                 scores.append(s)
                 players_score.append((player.num_player, s))
-                print('sc', player.num_player, s, player.dominoes)
+#                 print('sc', player.num_player, s, player.dominoes)
             best_score = min(scores)
             winners = [sc for sc in players_score if sc[1] == best_score]
             if len(winners) == 1:
                 self.winner = winners[0][0]
-                print('Scores:', players_score)
-                print('Winner: Player', self.winner)
+#                 print('Scores:', players_score)
+#                 print('Winner: Player', self.winner)
 #                 print('GAME STATE:', self.game_state[:self.num_moves])
             else:
                 self.winner = 0
-                print("It's a draw")
-                print('Scores:', players_score)
+#                 print("It's a draw")
+#                 print('Scores:', players_score)
         
         for pl in self.players:
             pl.is_ready = False
             
         self.finished = True
-        self.display_game()
+#         self.display_game()
         
     
     def save_afterstate(self, player):
