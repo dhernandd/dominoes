@@ -16,6 +16,9 @@
 from __future__ import print_function
 from __future__ import division
 
+# import sys
+# sys.
+
 import numpy as np
 import h5py
 
@@ -28,6 +31,8 @@ DOMINO = [[i, j] for i in range(1,TOPNUM+1) for j in range(i, TOPNUM+1)]
 
 NUM_PLAYERS = 4
 HAND_SIZE = 7
+
+DATA_FILE = 'set1.hd5f'
 
 STARTING_DOMINOES = [[[7, 7], [4, 6], [6, 7], [3, 3], [1, 2], [4, 5], [1, 5]],
  [[2, 6], [5, 5], [1, 4], [4, 4], [6, 6], [5, 6], [3, 7]],
@@ -150,7 +155,7 @@ def add_probs_to_dataset(data_file):
 
 if __name__ ==  '__main__':
 #     play_dominoes()
-    f = h5py.File('set1.hdf5','a')
+    f = h5py.File('data/' + DATA_FILE,'a')
     
     ctr = 0
     import time
@@ -169,7 +174,7 @@ if __name__ ==  '__main__':
         if sum(after_state_dict['num_dominoes']) == HAND_SIZE*NUM_PLAYERS - 1:
             n = 10000
         elif sum(after_state_dict['num_dominoes']) >= HAND_SIZE*NUM_PLAYERS/2:
-            n = 3000
+            n = 5000
         else:
             n = 1000
         probs = simulate_after_state(after_state_dict, num_sims=n)
