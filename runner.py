@@ -26,13 +26,15 @@ from utils import draw_init, draw_mc, roll_game, get_usable_dominoes, draw_arbit
 from dominoes import Dominoes
 from players import RandomDominoPlayer
 
+RUN_TYPE = 'sim'
+
 TOPNUM = 7
 DOMINO = [[i, j] for i in range(1,TOPNUM+1) for j in range(i, TOPNUM+1)]
 
 NUM_PLAYERS = 4
 HAND_SIZE = 7
 
-DATA_FILE = 'set1.hdf5'
+DATA_FILE = 'set13.hdf5'
 
 STARTING_DOMINOES = [[[7, 7], [4, 6], [6, 7], [3, 3], [1, 2], [4, 5], [1, 5]],
  [[2, 6], [5, 5], [1, 4], [4, 4], [6, 6], [5, 6], [3, 7]],
