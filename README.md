@@ -1,0 +1,2 @@
+# dominoes
+Intelligent domino player
