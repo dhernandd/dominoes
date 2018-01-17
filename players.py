@@ -41,6 +41,27 @@ def variable_in_cpu(name, shape, initializer):
     return var
 
 
+def main_iterator(input_x, input_y, batch_size):
+    assert len(input_x) == len(input_y)
+    l = len(input_x)
+    
+    from random import shuffle
+    data = zip(input_x, input_y)
+    shuffle(data)
+    
+#     rem_indices = range(l)
+    ctr = 0
+    while l > (ctr+1)*batch_size:
+#         inds = rem_indices[:batch_size]
+#         rem_indices = rem_indices[batch_size:]
+#         l = len(rem_indices)
+        ctr += 1
+#         print(np.array([ np.append(d[1], 1.0-sum(d[1])) for d in data[(ctr-1)*batch_size:ctr*batch_size]]))
+        yield ( np.array([d[0] for d in data[(ctr-1)*batch_size:ctr*batch_size]]), 
+                np.array([ np.append(d[1], 1.0-sum(d[1])) for d in data[(ctr-1)*batch_size:ctr*batch_size]]) )
+
+
+
 class DominoPlayer():
     """
     """
@@ -447,17 +468,25 @@ class DeepQDominoPlayer(DominoPlayer):
         
         # TODO: Define here the network that gets a game state and outputs a
         # probability
-        self.input = tf.placeholder(tf.float32, [None, 231], 'Inputs')
+        self.input = tf.placeholder(tf.float32, [None, 181], 'Inputs')
         self.batch_size = self.input.get_shape().as_list()[0]
         self.targets = tf.placeholder(tf.float32, [self.batch_size, 3], 'Targets')
         
         with tf.variable_scope('full1') as scope:
-            weights_full1 = variable_in_cpu('weights', [231, 256], 
+            weights_full1 = variable_in_cpu('weights', [181, 256], 
                                       initializer=tf.random_normal_initializer())
             biases_full1 = variable_in_cpu('biases', [256], 
                                      initializer=tf.constant_initializer())
             full1 = tf.nn.relu(tf.matmul(self.input, weights_full1) + biases_full1,
                                name=scope.name)
+
+#         with tf.variable_scope('full1b') as scope:
+#             weights_full1b = variable_in_cpu('weights', [256, 256], 
+#                                       initializer=tf.random_normal_initializer())
+#             biases_full1b = variable_in_cpu('biases', [256], 
+#                                      initializer=tf.constant_initializer())
+#             full1b = tf.nn.relu(tf.matmul(full1, weights_full1b) + biases_full1b,
+#                                name=scope.name)
         
         reshape_full1 = tf.reshape(full1, [-1, 16, 16, 1])
         
@@ -470,15 +499,22 @@ class DeepQDominoPlayer(DominoPlayer):
             conv1 = tf.nn.relu(pre_activation, name=scope.name)
 #    
 #         self.conv1 = conv1
+        with tf.variable_scope('conv2') as scope:
+            kernel_conv2 = variable_in_cpu('weights', shape=[3, 3, 64, 32],
+                                     initializer=tf.random_normal_initializer())
+            conv2 = tf.nn.conv2d(conv1, kernel_conv2, [1, 1, 1, 1], padding='SAME')
+            biases_conv2 = variable_in_cpu('biases', [32], tf.constant_initializer())
+            pre_activation = tf.nn.bias_add(conv2, biases_conv2)
+            conv2 = tf.nn.relu(pre_activation, name=scope.name)
         
-        pool1 = tf.nn.max_pool(conv1, ksize=[1,3,3,1], strides=[1,2,2,1],
-                               padding='SAME', name='pool1')
+#         pool1 = tf.nn.max_pool(conv1, ksize=[1,3,3,1], strides=[1,2,2,1],
+#                                padding='SAME', name='pool1')
 #         self.pool1 = pool1
-        norm1 = tf.nn.lrn(pool1, bias=1.0, name='norm1')
+        norm1 = tf.nn.lrn(conv2, bias=1.0, name='norm1')
 #         self.norm1= norm1
 #         
         with tf.variable_scope('full2') as scope:
-            reshape_norm1 = tf.reshape(norm1, [-1, 4096])
+            reshape_norm1 = tf.reshape(norm1, [-1, 8192])
             dim = reshape_norm1.get_shape()[1].value
             weights_full2 = variable_in_cpu('weights', shape=[dim, 128], 
                                       initializer=tf.random_normal_initializer(stddev=0.001))
@@ -503,7 +539,8 @@ class DeepQDominoPlayer(DominoPlayer):
         self.cost = tf.nn.l2_loss(softmax - self.targets, 'Cost')
 
         self.reg_terms = 1e-3*( tf.nn.l2_loss(weights_full1) + tf.nn.l2_loss(weights_full2) +
-                           tf.nn.l2_loss(weights_out) + tf.nn.l2_loss(kernel_conv1) )
+                           tf.nn.l2_loss(weights_out) + tf.nn.l2_loss(kernel_conv1) + 
+                            tf.nn.l2_loss(kernel_conv2) )
         
         self.loss = tf.add(self.cost, self.reg_terms, 'Loss') 
 #         self.eval = softmax
@@ -582,15 +619,22 @@ def get_batch(datafile, list_datasets, input_size=231):
         
 
     
-def train_DeepQPlayer(datafile='data/set1.hdf5', batch_size=5, learning_rate=1e-5, 
-                      num_epochs=1000, savedir='save/v0.0/', network_version='0.0',
+def train_DeepQPlayer(datafile='data/domino_main.db', batch_size=5, learning_rate=1e-5, 
+                      num_epochs=1000, savedir='saves/nn_0.0/', network_version='0.0',
                       restore=False):
     """
     """
 #     import os
 #     if not os.path.exists(savedir): os.makedirs(savedir)
 
-    f = h5py.File(datafile,'r')
+#     f = h5py.File(datafile,'r')
+    import pickle
+    db = pickle.load(open(datafile, 'r'))
+    
+    nsamps = len(db['input'])
+    db_input_train, db_input_valid = db['input'][:-nsamps//5], db['input'][-nsamps//5:]
+    db_output_train, db_output_valid = db['output'][:-nsamps//5], db['output'][-nsamps//5:]
+    nsamps_valid = len(db_output_valid)
     
     game = Dominoes(num_players=NUM_PLAYERS, hand_size=HAND_SIZE, topnum=TOPNUM)
     player = DeepQDominoPlayer(1, game)
@@ -599,22 +643,19 @@ def train_DeepQPlayer(datafile='data/set1.hdf5', batch_size=5, learning_rate=1e-
     
     init_op = tf.global_variables_initializer()
     
+    best_valid_cost = np.inf
     saver = tf.train.Saver() 
     with tf.Session() as sess:
         sess.run(init_op)
         for _ in range(num_epochs):
             cost_per_epoch = 0
-            list_datasets = list(f.keys())
-            L = len(list_datasets)
-            list_train, list_valid = list_datasets[:-L//5], list_datasets[-L//5:] 
             btc = 0
-            while list_train:
-                game_ids_in_this_batch = pop_random(list_train, batch_size)
-                batch_x, batch_y = get_batch(f, game_ids_in_this_batch)
-#                 if btc == 10: break
-#                 p = sess.run(player.prob, feed_dict={player.input : batch_x})
-
-#                 if len(batch_y) != batch_size: break
+            data_batch = main_iterator(db_input_train, db_output_train, batch_size)
+            for batch_x, batch_y in data_batch:
+#                 game_ids_in_this_batch = pop_random(list_train, batch_size)
+#                 batch_x, batch_y = get_batch(f, game_ids_in_this_batch)
+#                 print(batch_x)
+#                 print(batch_y)
                 _, c = sess.run([optimizer, player.cost], 
                                 feed_dict={player.input : batch_x,
                                            player.targets : batch_y} )
@@ -622,11 +663,16 @@ def train_DeepQPlayer(datafile='data/set1.hdf5', batch_size=5, learning_rate=1e-
                 cost_per_epoch += c
 #                 print(btc,)
                 btc += 1
+            
+            valid_x, valid_y = list(main_iterator(db_input_valid, db_output_valid, 1000))[0]
+            valid_cost, l = sess.run([player.cost/nsamps_valid, player.loss], 
+                                     feed_dict={player.input : valid_x,
+                                           player.targets : valid_y})
+            if valid_cost < best_valid_cost:
+                print('Saving network...')
+                saver.save(sess, savedir + 'model_'+network_version)
+                best_valid_cost = valid_cost
                 
-#                 print('Cost per batch:', c)
-            batch_x, batch_y = get_batch(f, list_valid)
-            valid_cost, l = sess.run([player.cost/len(list_valid), player.loss], feed_dict={player.input : batch_x,
-                                           player.targets : batch_y})
             print('Cost per epoch(valid):', cost_per_epoch, valid_cost, l)
             
 
@@ -636,7 +682,7 @@ if __name__ == '__main__':
     f = h5py.File('data/set1.hdf5','a')
 
     d = f['game0']
-    print(d['win_probs'][:])
+#     print(d['win_probs'][:])
 #     print(d.keys())
 #     board_state = d['board_state'][:,1:]
 #     num_dominoes = d['num_dominoes'][:]
@@ -650,7 +696,7 @@ if __name__ == '__main__':
 #     print(len(flat_input))
     list_datasets = list(f.keys())
     game_ids_in_this_batch = pop_random(list_datasets, batch_size=10)
-    print(game_ids_in_this_batch)
+#     print(game_ids_in_this_batch)
 #     print(game_ids_in_this_batch[0] in list_datasets, list_datasets)
     train_DeepQPlayer()
 #     x, y = get_batch(f, game_ids_in_this_batch)
