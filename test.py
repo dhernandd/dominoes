@@ -159,11 +159,17 @@ def add_draw_prob(y_data):
 
     
 # 
-f = h5py.File('data/set19.hdf5','a')
-g = f['game3213']
+f = h5py.File('data/set15.hdf5','r')
+ctr=0
+g = f['game1210']
+print(g['num_dominoes'][:])
+#     print(g.keys())
 # for g in f.keys():
-key = unicode('win_probs', "utf-8")
-print(g[key][:])
+#     if 'win_probs' in g.keys():
+#         ctr += 1
+#         del g['win_probs']
+
+        
 # print(g_name)
 # print(g.keys())
 # print(g['new_bs'][:])

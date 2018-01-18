@@ -34,7 +34,7 @@ DOMINO = [[i, j] for i in range(1,TOPNUM+1) for j in range(i, TOPNUM+1)]
 NUM_PLAYERS = 4
 HAND_SIZE = 7
 
-DATA_FILE = 'set13.hdf5'
+DATA_FILE = 'set15.hdf5'
 
 STARTING_DOMINOES = [[[7, 7], [4, 6], [6, 7], [3, 3], [1, 2], [4, 5], [1, 5]],
  [[2, 6], [5, 5], [1, 4], [4, 4], [6, 6], [5, 6], [3, 7]],
@@ -143,7 +143,7 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
 #         print('Salida:', game.salida)
 #         print('Game End!\n\n')
             
-    print('\n', list_victories, '\t', list_victories[1]+list_victories[3], 
+    print(list_victories, '\t', list_victories[1]+list_victories[3], 
               list_victories[2]+list_victories[4])
     
     return (list_victories[1]+list_victories[3])/num_sims, \
@@ -157,13 +157,16 @@ def add_probs_to_dataset(data_file):
 
 if __name__ ==  '__main__':
 #     play_dominoes()
-    f = h5py.File('data/' + DATA_FILE,'a')
+    file_path = 'data/' + DATA_FILE
+    print('Processing data from file', file_path)
+    f = h5py.File(file_path,'a')
     
 #     ctr = 0
     import time
     t1 = time.time()
+    ctr = 0
     for name in f.keys():
-        print('Game:', name)
+        print('\n\nGame:', name)
         data = f[name]
         after_state_dict = {}
         
@@ -181,9 +184,14 @@ if __name__ ==  '__main__':
             n = 1000
         probs = simulate_after_state(after_state_dict, num_sims=n)
         
-        if 'win_probs' in data.keys(): del data['win_probs']
-        data['win_probs']  = probs
+        try:
+            if 'win_probs' in data.keys(): del data['win_probs']
+            data['win_probs']  = probs
+        except:
+            del f[name]
         print('Win probs:', probs)
+        ctr += 1
+        if ctr % 50 == 0: print('Processed', ctr, 'games')
         
 #         ctr += 1
 #         if ctr == 10:
