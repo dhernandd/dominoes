@@ -92,7 +92,7 @@ class DominoPlayer():
         return d
 
 
-    def reset(self, start_dominoes, one_hot=True):
+    def reset(self, start_dominoes, one_hot=False):
         """
         TODO: Implement a reset that resets to an arbitrary game state.
         """

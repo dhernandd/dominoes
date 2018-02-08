@@ -42,8 +42,10 @@ STARTING_DOMINOES = [[[7, 7], [4, 6], [6, 7], [3, 3], [1, 2], [4, 5], [1, 5]],
  [[3, 4], [1, 3], [1, 1], [4, 7], [2, 3], [1, 7], [2, 7]]]
 
 
-def make_database(num_files=50):
+def make_database(num_files=1):
     """
+    Creates a database of domino boards without any probability of winning
+    associated to them. This must be added later.
     """
     for i in range(num_files):
         print('\n\n\nCreating set', str(i), '\n\n\n')
@@ -51,31 +53,47 @@ def make_database(num_files=50):
         play_dominoes(save_file=s_file)
 
  
-def play_dominoes(draw=draw_init, save_file=None):
+def play_dominoes(draw=draw_init, save_file=None, num_games=100000):
+    """
+    Plays games of dominoes.
+    
+    Args:
+        draw: The function that draws the starting dominoes.         
+        save_file: If this is not None, the Dominoes instance will save the positions thus
+        creating a database.
+        num_games: The number of games to enter play
+        
+    """
     list_victories = [0]*(NUM_PLAYERS+1)
     game = Dominoes(NUM_PLAYERS, HAND_SIZE, TOPNUM, save_file=save_file)
+    
+    # Setups the game. This includes initializing the player instances.
     player1 = RandomDominoPlayer(1, game)
     player2 = RandomDominoPlayer(2, game)
     player3 = RandomDominoPlayer(3, game)
     player4 = RandomDominoPlayer(4, game)
-#     list_players = (player1, player2)
-#     list_players = (player1, player2, player3)
     list_players = (player1, player2, player3, player4)
     game.setup(list_players)
 
-    for _ in range(1):
-        
+    # Play!
+    for _ in range(num_games):
+        # Cleans the game state
         game.reset()
         print('\n\nNew game!')
+        
+        # Draws the starting dominoes.
         starting_dominoes = draw(NUM_PLAYERS, DOMINO, HAND_SIZE)
         print('\nStarting_dominoes')
         print(starting_dominoes[0])
         print(starting_dominoes[1])
         print(starting_dominoes[2])
         print(starting_dominoes[3])
+        
+        # Assigns the starting dominoes to each player
         for player, dominoes in zip(list_players, starting_dominoes):
             player.reset(start_dominoes=list(dominoes))
-            
+        
+        # Rolls the game!
         winner = roll_game(game)
         list_victories[winner] += 1
         
@@ -88,11 +106,30 @@ def play_dominoes(draw=draw_init, save_file=None):
 
 def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
     """
-    """
-    list_victories = [0]*(NUM_PLAYERS+1)
+    Takes an afterstate and simulates onwards.
     
+    Args:
+        after_state_dict: The dictionary with all the info for afterstate of
+        player P. It includes entries for the game board, the remaining hand of
+        player P, the number of dominoes in the hands of the other players and a
+        one hot encoding of the known 'fallos'.
+        
+        hand_size: The initial hand sizes for this game. This is necessary to
+        start the Dominoes instance
+        
+        num_sims: The number of simulations to carry for this afterstate. This
+        should generally be smaller, the lower the total number of remaining
+        dominoes in the hands of all players.
+        
+    Returns:
+        (p1, p2): A tuple with the probabilities of team 1 and team 2 winning.
+        The probability of a draw is 1-p1-p2.
+    """
     from copy import deepcopy
 
+    list_victories = [0]*(NUM_PLAYERS+1)
+
+    # A number of important parameters can be obtained from the afterstate...
     num_players = len(after_state_dict['num_dominoes'])
     
     board_state = after_state_dict['board_state']
@@ -101,6 +138,7 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
     player_hand_one_hot = after_state_dict['player_hand']
     topnum = len(player_hand_one_hot)
     
+    # Setups the game to be played from the afterstate onwards.
     game = Dominoes(num_players, hand_size, topnum)
     list_players_ids = list(range(1, num_players+1))
     list_players = []
@@ -111,38 +149,41 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
     
 
     for _ in range(num_sims):
-#         print('New simulation!')
-        
+        # Pass a game state to reset. This sets the initial position on the
+        # board.
         asd_copy = deepcopy(after_state_dict)
         game.reset(asd_copy)
         
         # Sanity check. The game-stored last player is the same as the one
-        # deduced from the board state
+        # deduced from the board state.
         last_player = game.last_player
         assert last_player.num_player == last_player_id, "The last player is not what it should be"
-        last_player.reset(np.array(player_hand_one_hot))
-#         print('Player dominoes:', last_player.dominoes)
         
+        # Give the last player her stored hand.
+        last_player.reset(np.array(player_hand_one_hot))
+        
+        # Make lists of the dominoes each player could have.
         usable_dominoes_pp = get_usable_dominoes(list(DOMINO), asd_copy)
         other_player_ids = [i for i in range(1, num_players+1) if i != last_player.num_player]
         
+        # Try drawing using the draw_arbitrary function. There is still a bug
+        # here that makes this fail in some rare cases so whatever, just catch
+        # the exception and move on.
         try:
             draw_dict = draw_arbitrary(other_player_ids, list(usable_dominoes_pp), 
                                    asd_copy['num_dominoes'])
         except:
             continue
-#         print('\nStarting_dominoes')
-#         print(draw_dict)
+        
+        # At last, give the hands to the respective players...
         for pl_id in other_player_ids:
             player = game.players_dict[pl_id]
             player.reset(start_dominoes=draw_dict[player.num_player], one_hot=False)
-            
+        
+        # ...and roll
         winner = roll_game(game)
         list_victories[winner] += 1
-        
-#         print('Salida:', game.salida)
-#         print('Game End!\n\n')
-            
+                
     print(list_victories, '\t', list_victories[1]+list_victories[3], 
               list_victories[2]+list_victories[4])
     
@@ -152,16 +193,16 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
 
 def add_probs_to_dataset(data_file):
     """
+    Adds the probabilities of winning for the last player to each board state in
+    a database.
+    
+    Args:
+        data_file: The database of board_states
     """
-    pass
-
-if __name__ ==  '__main__':
-#     play_dominoes()
     file_path = 'data/' + DATA_FILE
     print('Processing data from file', file_path)
     f = h5py.File(file_path,'a')
-    
-#     ctr = 0
+
     import time
     t1 = time.time()
     ctr = 0
@@ -198,6 +239,12 @@ if __name__ ==  '__main__':
 #             break
     t2 = time.time()
     print('Total time', t2-t1)
+
+
+
+if __name__ ==  '__main__':
+    play_dominoes(save_file='set1.hdf5')
+    
 
     
         
