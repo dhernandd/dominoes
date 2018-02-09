@@ -93,42 +93,43 @@ class Dominoes():
                 
             self.one_hot_passes = [[0]*self.topnum for i in range(self.num_players)]
             self.num_passes = 0
+            init_board = None
         
 #         # self.game_board is convenient for visualization
         self.game_board = [[0, 0]]*self.max_length_game
         self.back_pos = 0
         num_passes = 0
-#         if init_board is not None:
-#             for i, state in enumerate(self.board_state):
-#                 dom = state[2:].tolist()
-#                 if i == 0:
-#                     self.game_board[0] = list(dom)
-#                     self.heads = list(dom)
-#                 else:
-#                     if state[1] == 2:
-#                         # Sanity check:
-#                         assert self.heads[1] in dom, "Forro!"
-#                         
-#                         self.game_board[i-num_passes] = ( dom if self.heads[1] == dom[0] 
-#                                                else dom[::-1] )
-#                         self.back_pos += 1
-#                         self.heads[1] = self.game_board[self.back_pos][1]
-#                     elif state[1] == 1:
-#                         # Sanity check:
-#                         assert self.heads[0] in state[2:], "Forro!"
-#                         
-#                         self.game_board[1:i+1-num_passes] = self.game_board[:i-num_passes] 
-#                         self.game_board[0] = ( dom if self.heads[0] == dom[1] 
-#                                                else dom[::-1] )                        
-#                         self.back_pos += 1
-#                         self.heads[0] = self.game_board[0][0]
-#                     elif state[1] == -1:
-#                         for i in self.heads:
-#                             self.one_hot_passes[state[0]-1][i-1] = 1 
-#                         num_passes += 1
-# #                 self.num_moves += 1
-#                 
-# #             self.game_board[0] = self.game_state[0][2:4].tolist()  
+        if init_board is not None:
+            for i, state in enumerate(self.board_state):
+                dom = state[2:].tolist()
+                if i == 0:
+                    self.game_board[0] = list(dom)
+                    self.heads = list(dom)
+                else:
+                    if state[1] == 2:
+                        # Sanity check:
+                        assert self.heads[1] in dom, "Forro!"
+                         
+                        self.game_board[i-num_passes] = ( dom if self.heads[1] == dom[0] 
+                                               else dom[::-1] )
+                        self.back_pos += 1
+                        self.heads[1] = self.game_board[self.back_pos][1]
+                    elif state[1] == 1:
+                        # Sanity check:
+                        assert self.heads[0] in state[2:], "Forro!"
+                         
+                        self.game_board[1:i+1-num_passes] = self.game_board[:i-num_passes] 
+                        self.game_board[0] = ( dom if self.heads[0] == dom[1] 
+                                               else dom[::-1] )                        
+                        self.back_pos += 1
+                        self.heads[0] = self.game_board[0][0]
+                    elif state[1] == -1:
+                        for i in self.heads:
+                            self.one_hot_passes[state[0]-1][i-1] = 1 
+                        num_passes += 1
+#                 self.num_moves += 1
+                 
+#             self.game_board[0] = self.game_state[0][2:4].tolist()  
         self.finished = False
         
     
@@ -165,11 +166,8 @@ class Dominoes():
         """
         pos = move[0]
         dom = move[1]
-#         self.cur_player = player
         num_player = player.num_player
         
-#         print('Player', num_player, 'to play', dom, 'in pos', pos, '. Heads:', self.heads )
-#         print('board:', self.game_board)
         # Sanity check: Can the current player be deduced from the board state?
         if self.game_started:
 #             print('self.num_moves', self.num_moves)
@@ -309,9 +307,9 @@ class Dominoes():
     def save_afterstate(self, player):
         """
         """
-        print('Saving...')
+#         print('Saving...')
 
-        f = h5py.File(self.save_file,'a')
+        f = h5py.File(self.save_file, 'a')
         
         num_states = len(f.keys())
         grp = f.create_group('game' + str(num_states))

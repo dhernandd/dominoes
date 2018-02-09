@@ -76,7 +76,7 @@ def make_afterstate_dict(data):
     return after_state_dict
     
     
-def roll_game(game, init_move=None):
+def roll_game(game, init_move=None, save=False):
     """
     """
     while True:
@@ -87,7 +87,7 @@ def roll_game(game, init_move=None):
         else:
             m = pl.get_move()
 #         print('Game board, move', game.game_board[:game.num_moves], m[1:])
-        game.play(m[0], m[1], save=False)
+        game.play(m[0], m[1], save=save)
         if game.finished:
 #             game.display_game()
             winner = game.winner
@@ -133,8 +133,6 @@ def get_usable_dominoes(domino, afterstate):
         
     return l
         
-     
-    
 def draw_arbitrary(player_ids, usable_dominoes, hand_sizes):
     """
     """

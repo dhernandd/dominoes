@@ -53,7 +53,7 @@ def make_database(num_files=1):
         play_dominoes(save_file=s_file)
 
  
-def play_dominoes(draw=draw_init, save_file=None, num_games=100000):
+def play_dominoes(draw=draw_init, save_file=None, num_games=10, save=True):
     """
     Plays games of dominoes.
     
@@ -76,29 +76,29 @@ def play_dominoes(draw=draw_init, save_file=None, num_games=100000):
     game.setup(list_players)
 
     # Play!
-    for _ in range(num_games):
+    for i in range(num_games):
         # Cleans the game state
         game.reset()
-        print('\n\nNew game!')
         
         # Draws the starting dominoes.
         starting_dominoes = draw(NUM_PLAYERS, DOMINO, HAND_SIZE)
-        print('\nStarting_dominoes')
-        print(starting_dominoes[0])
-        print(starting_dominoes[1])
-        print(starting_dominoes[2])
-        print(starting_dominoes[3])
+#         print('\nStarting_dominoes')
+#         print(starting_dominoes[0])
+#         print(starting_dominoes[1])
+#         print(starting_dominoes[2])
+#         print(starting_dominoes[3])
         
         # Assigns the starting dominoes to each player
         for player, dominoes in zip(list_players, starting_dominoes):
             player.reset(start_dominoes=list(dominoes))
         
         # Rolls the game!
-        winner = roll_game(game)
+        winner = roll_game(game, save=save)
         list_victories[winner] += 1
-        
-        print('Salida:', game.salida)
-        print('Game End!\n\n')
+        if (i*20) % num_games == 0:
+            print(i*100/num_games, '% processed.')
+            
+#         print('Salida:', game.salida)
             
     print('\n', list_victories, '\t', list_victories[1]+list_victories[3], 
               list_victories[2]+list_victories[4])
@@ -160,7 +160,7 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
         assert last_player.num_player == last_player_id, "The last player is not what it should be"
         
         # Give the last player her stored hand.
-        last_player.reset(np.array(player_hand_one_hot))
+        last_player.reset(np.array(player_hand_one_hot), one_hot=True)
         
         # Make lists of the dominoes each player could have.
         usable_dominoes_pp = get_usable_dominoes(list(DOMINO), asd_copy)
@@ -191,7 +191,7 @@ def simulate_after_state(after_state_dict, hand_size=HAND_SIZE, num_sims=1):
         (list_victories[2]+list_victories[4])/num_sims
 
 
-def add_probs_to_dataset(data_file):
+def add_probs_to_dataset(data_file='set1.hdf5'):
     """
     Adds the probabilities of winning for the last player to each board state in
     a database.
@@ -199,13 +199,14 @@ def add_probs_to_dataset(data_file):
     Args:
         data_file: The database of board_states
     """
-    file_path = 'data/' + DATA_FILE
+    file_path = data_file
     print('Processing data from file', file_path)
     f = h5py.File(file_path,'a')
 
     import time
     t1 = time.time()
     ctr = 0
+    print(f.keys())
     for name in f.keys():
         print('\n\nGame:', name)
         data = f[name]
@@ -217,6 +218,8 @@ def add_probs_to_dataset(data_file):
         after_state_dict['player'] = data['player'][()]
         after_state_dict['player_hand'] = data['player_hand'][:]
         
+        # Depending on how many dominoes remain in the hands of the players,
+        # decide how many simulations
         if sum(after_state_dict['num_dominoes']) == HAND_SIZE*NUM_PLAYERS - 1:
             n = 10000
         elif sum(after_state_dict['num_dominoes']) >= HAND_SIZE*NUM_PLAYERS/2:
@@ -234,16 +237,54 @@ def add_probs_to_dataset(data_file):
         ctr += 1
         if ctr % 50 == 0: print('Processed', ctr, 'games')
         
-#         ctr += 1
-#         if ctr == 10:
-#             break
     t2 = time.time()
     print('Total time', t2-t1)
 
 
+def to_new_board_state(datafile_name):
+    """
+    Defines a more efficient board state.
+    """
+    datafile = h5py.File(datafile_name,'a')
+    for k in datafile.keys():
+        data = datafile[k]
+        board_state = data['board_state'][:]
+        
+        # The new board state is temporarily stored in bs. bs is a Mx2 tensor.
+        # bs[0] is simply the 'salida' (first move).
+        bs = np.zeros_like(board_state[:,2:])
+        bs[0] = board_state[0,2:]
+        h1 = bs[0,0]
+        h2 = bs[0,1]
+        
+        # The point of the new coding is for each move to ONLY store the
+        # position of the move (1, 2, -1) and the change in the corresponding
+        # head. This is what is done below for each.
+        for n, m in enumerate(board_state[1:], 1):
+            d = m[2:]
+            p = m[1]
+            if p == 2:
+                d = d if d[0] == h2 else d[::-1]
+                h2 = d[1]
+                bs[n] = np.array([p, h2])
+            elif p == 1:
+                d = d if d[1] == h1 else d[::-1]
+                h1 = d[0]
+                bs[n] = np.array([p, h1])
+            elif p == -1:
+                bs[n] = np.array([-1, 0])
+            else:
+                bs[n] = np.zeros(2)
+        
+        data['new_bs'] = bs
+        
+        
 
 if __name__ ==  '__main__':
-    play_dominoes(save_file='set1.hdf5')
+    for i in range(1, 10):
+        sf = 'set' + str(i) +'.hdf5'
+        play_dominoes(save_file=sf, num_games=1000)
+#     add_probs_to_dataset()
     
 
     
