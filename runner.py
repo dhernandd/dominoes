@@ -42,7 +42,7 @@ STARTING_DOMINOES = [[[7, 7], [4, 6], [6, 7], [3, 3], [1, 2], [4, 5], [1, 5]],
  [[3, 4], [1, 3], [1, 1], [4, 7], [2, 3], [1, 7], [2, 7]]]
 
 
-def make_database(num_files=1):
+def make_database(num_files=10):
     """
     Creates a database of domino boards without any probability of winning
     associated to them. This must be added later.
@@ -53,7 +53,7 @@ def make_database(num_files=1):
         play_dominoes(save_file=s_file)
 
  
-def play_dominoes(draw=draw_init, save_file=None, num_games=10, save=True):
+def play_dominoes(draw=draw_init, save_file=None, num_games=1000, save=True):
     """
     Plays games of dominoes.
     
@@ -246,44 +246,109 @@ def to_new_board_state(datafile_name):
     Defines a more efficient board state.
     """
     datafile = h5py.File(datafile_name,'a')
+    Nkeys = len(datafile.keys())
+    print('Processing file', datafile_name)
+    ctr = 0
     for k in datafile.keys():
-        data = datafile[k]
-        board_state = data['board_state'][:]
-        
-        # The new board state is temporarily stored in bs. bs is a Mx2 tensor.
-        # bs[0] is simply the 'salida' (first move).
-        bs = np.zeros_like(board_state[:,2:])
-        bs[0] = board_state[0,2:]
-        h1 = bs[0,0]
-        h2 = bs[0,1]
-        
-        # The point of the new coding is for each move to ONLY store the
-        # position of the move (1, 2, -1) and the change in the corresponding
-        # head. This is what is done below for each.
-        for n, m in enumerate(board_state[1:], 1):
-            d = m[2:]
-            p = m[1]
-            if p == 2:
-                d = d if d[0] == h2 else d[::-1]
-                h2 = d[1]
-                bs[n] = np.array([p, h2])
-            elif p == 1:
-                d = d if d[1] == h1 else d[::-1]
-                h1 = d[0]
-                bs[n] = np.array([p, h1])
-            elif p == -1:
-                bs[n] = np.array([-1, 0])
-            else:
-                bs[n] = np.zeros(2)
-        
-        data['new_bs'] = bs
-        
+        try:
+            if data['new_bs']: continue
+            if (10*ctr) / Nkeys < 10: print(100*ctr/Nkeys,'% processed')
+            data = datafile[k]
+            board_state = data['board_state'][:]
+            if data['new_bs']: del data['new_bs']
+            
+            # The new board state is temporarily stored in bs. bs is a Mx2 tensor.
+            # bs[0] is simply the 'salida' (first move).
+            bs = np.zeros_like(board_state[:,2:])
+            bs[0] = board_state[0,2:]
+            h1 = bs[0,0]
+            h2 = bs[0,1]
+            
+            # The point of the new coding is for each move to ONLY store the
+            # position of the move (1, 2, -1) and the change in the corresponding
+            # head. This is what is done below for each.
+            for n, m in enumerate(board_state[1:], 1):
+                d = m[2:]
+                p = m[1]
+                if p == 2:
+                    d = d if d[0] == h2 else d[::-1]
+                    h2 = d[1]
+                    bs[n] = np.array([p, h2])
+                elif p == 1:
+                    d = d if d[1] == h1 else d[::-1]
+                    h1 = d[0]
+                    bs[n] = np.array([p, h1])
+                elif p == -1:
+                    bs[n] = np.array([-1, 0])
+                else:
+                    bs[n] = np.zeros(2)
+            
+            data['new_bs'] = bs
+            ctr += 1 
+        except:
+            print('Deleting', k)
+            del datafile[k]
         
 
+def add_flattened_input(datafile_name):
+    """
+    """
+    datafile = h5py.File(datafile_name,'a')
+    for name in datafile.keys():
+        data = datafile[name]
+    
+        board_state = data['new_bs'][:]
+        num_dominoes = np.array(data['num_dominoes'][:])
+        passes = data['passes'][:]
+        player_hand = data['player_hand'][:]
+    
+        flat_input = np.expand_dims(np.concatenate((np.array(num_dominoes), player_hand.flatten(),
+                                 passes.flatten(), board_state.flatten())), 0)
+
+        data['input'] = flat_input
+        
+
+def make_dict_database(file_name):
+    """
+    Makes a dictionary database with the relevant info for training ('input' and
+    'win_probs')
+    """
+    f = h5py.File(file_name,'r')
+
+    num_games = len(f.keys())
+    db = {'input' : np.zeros((num_games, 181)), 'output' : np.zeros((num_games, 2))}
+    for i, g in enumerate(f.keys()):
+        db['input'][i] = f[g]['input'][:]
+        db['output'][i] = f[g]['win_probs'][:]
+    
+    return db
+
+
+def make_total_dict_db(list_files):
+    """
+    Makes one big dictionary out of several files
+    """
+    for i, file_name in enumerate(list_files):
+        print('Processing file', file_name)
+        db = make_dict_database(file_name)
+        if not i:
+            total_input = db['input']
+            total_output = db['output']
+        else:
+            total_input = np.concatenate((total_input, db['input']))
+            total_output = np.concatenate((total_output, db['output']))
+    
+    d = {'input' : total_input, 'output' : total_output}        
+    
+    import cPickle as pickle
+    pickle.dump(d, open('data/domino_main.db', "w+"))
+
+
 if __name__ ==  '__main__':
-    for i in range(1, 10):
-        sf = 'set' + str(i) +'.hdf5'
-        play_dominoes(save_file=sf, num_games=1000)
+    make_database()
+#     for i in range(2, 10):
+#         sf = 'set' + str(i) +'.hdf5'
+#         to_new_board_state(sf)
 #     add_probs_to_dataset()
     
 
