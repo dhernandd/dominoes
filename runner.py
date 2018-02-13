@@ -344,6 +344,7 @@ def make_total_dict_db(list_files):
     pickle.dump(d, open('data/domino_main.db', "w+"))
 
 
+
 if __name__ ==  '__main__':
     make_database()
 #     for i in range(2, 10):
